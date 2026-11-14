@@ -260,8 +260,10 @@ test('structure finder gives the locate command and runs it as the player', asyn
   player.setDynamicProperty = (k, v) => { properties[k] = v; };
   ctx.showStructureLocateCommand(player, { name: 'Village', id: 'minecraft:village' });
   await tick();
-  assert.deepEqual(player.commands, ['locate structure minecraft:village']);
-  assert.ok(player.messages.some(m => m.includes('/locate structure minecraft:village')));
+  // Bedrock's /locate takes structure names without the minecraft: namespace.
+  assert.deepEqual(player.commands, ['locate structure village']);
+  assert.ok(player.messages.some(m => m.includes('/locate structure village')));
+  assert.ok(!player.messages.some(m => m.includes('minecraft:village')));
   assert.ok(player.messages.some(m => m.includes('Cheats')));
   assert.ok(properties.last_found_location.startsWith('Village:'));
   assert.equal(player.teleports.length, 0);
@@ -2580,4 +2582,88 @@ test('cane and bamboo collect items on their planting row and seed kelp only int
       }
     }
   }
+});
+
+test('furniture stands on a floor and never replaces a railing, stair step or other part of the build', () => {
+  for (const facing of FACINGS) {
+    const { ctx, player, evaluate } = harness();
+    player.getViewDirection = () => facing;
+    const plans = [];
+    for (const key of evaluate('HOUSE_DESIGNS.map(d => d.key)')) plans.push([key, ctx.createHouseDesignPlan(player, key, 0, true)]);
+    for (const layout of ['village', 'city']) plans.push([layout, ctx.createVillagePlan(player, 0, true, layout, true)]);
+    for (const [name, plan] of plans) {
+      const blocks = new Map();
+      const at = (x, y, z) => blocks.get(`${x},${y},${z}`) || 'minecraft:air';
+      let furniture = 0;
+      for (const command of plan.commands) {
+        const c = ctx.parseBlockCommand(command);
+        for (let x = c.x1; x <= c.x2; x++) for (let y = c.y1; y <= c.y2; y++) for (let z = c.z1; z <= c.z2; z++) {
+          const before = at(x, y, z);
+          if (c.mode === 'keep' && before !== 'minecraft:air') continue;
+          if (c.blockId.startsWith('tools:')) {
+            furniture++;
+            assert.ok(before === 'minecraft:air' || before.endsWith('_carpet'), `${name}: ${c.blockId} replaced ${before} (${command})`);
+          }
+          blocks.set(`${x},${y},${z}`, c.blockId);
+        }
+      }
+      if (name !== 'watchtower') assert.ok(furniture > 0, name);
+      for (const [key, id] of blocks) {
+        if (!id.startsWith('tools:')) continue;
+        const [x, y, z] = key.split(',').map(Number);
+        assert.notEqual(at(x, y - 1, z), 'minecraft:air', `${name}: ${id} floats at ${key}`);
+      }
+    }
+  }
+});
+
+test('chairs stay chairs in styles that use the same stairs for sofas and chairs', () => {
+  const { ctx, player, evaluate } = harness();
+  const palettes = evaluate('HOUSE_PALETTES');
+  assert.ok(palettes.some(p => p.sofa === p.chair), 'at least one style shares its sofa and chair block');
+  for (let index = 0; index < palettes.length; index++) {
+    // The cottage has two dining chairs and no sofa.
+    const blocks = ctx.createHouseDesignPlan(player, 'cottage', index, true).commands.map(c => ctx.parseBlockCommand(c).blockId);
+    assert.equal(blocks.filter(id => id === 'tools:chair').length, 2, palettes[index].name);
+    assert.equal(blocks.filter(id => id === 'tools:sofa').length, 0, palettes[index].name);
+    // The A-frame cabin has a two-seat sofa and no chairs.
+    const cabin = ctx.createHouseDesignPlan(player, 'aframe', index, true).commands.map(c => ctx.parseBlockCommand(c).blockId);
+    assert.equal(cabin.filter(id => id === 'tools:sofa').length, 2, palettes[index].name);
+    assert.equal(cabin.filter(id => id === 'tools:chair').length, 0, palettes[index].name);
+  }
+});
+
+test('escape to surface comes up on top of water but never lands on lava', () => {
+  const liquidColumn = (liquid) => ({ y }) => {
+    const typeId = y < 40 ? 'minecraft:stone' : y <= 62 ? liquid : 'minecraft:air';
+    return { typeId, isAir: typeId === 'minecraft:air' };
+  };
+  const sea = harness();
+  sea.player.location = { x: 0.5, y: 41, z: 0.5 };
+  sea.dimension.getBlock = liquidColumn('minecraft:water');
+  sea.ctx.escapeToSurface(sea.player);
+  assert.equal(sea.player.teleports.length, 1);
+  assert.equal(sea.player.teleports[0].loc.y, 63);
+  // Already floating at the surface: nothing to do.
+  sea.player.location = { x: 0.5, y: 62, z: 0.5 };
+  sea.ctx.escapeToSurface(sea.player);
+  assert.equal(sea.player.teleports.length, 1);
+
+  const lava = harness();
+  lava.player.location = { x: 0.5, y: 41, z: 0.5 };
+  lava.dimension.getBlock = liquidColumn('minecraft:lava');
+  lava.ctx.escapeToSurface(lava.player);
+  assert.equal(lava.player.teleports.length, 0);
+  assert.ok(lava.player.messages.some(m => m.includes('could not find open sky')));
+});
+
+test('fruit farm prompt points to the end where its chest really is', () => {
+  const { ctx, player, evaluate } = harness();
+  // Facing south, local +x is world +x, which is on the player's left.
+  player.getViewDirection = () => ({ x: 0, y: 0, z: 1 });
+  const plan = ctx.createFruitFarmPlan(player, 4, 0);
+  const chest = plan.commands.map(c => ctx.parseBlockCommand(c)).find(c => c && c.blockId === 'minecraft:chest');
+  assert.ok(chest.x1 > (plan.bounds.x1 + plan.bounds.x2) / 2, 'chest is at the +x (left-hand) end');
+  const contraption = evaluate('CONTRAPTIONS').find(c => c.key === 'fruit_farm');
+  assert.match(contraption.prompt(plan), /left-hand end/);
 });

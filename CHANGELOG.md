@@ -2,6 +2,23 @@
 
 Release notes for the Helper Tools add-on, newest first. Each release bumps both pack manifests so Minecraft recognises the update.
 
+## Version 1.5.7: review fixes
+
+A review of the whole add-on. The script was type-checked against the `@minecraft/server` 2.9.0 typings, every block, block state, item, entity, biome and enchantment name was checked against Mojang's `@minecraft/vanilla-data`, and every build was replayed in a simulated block world. These problems turned up:
+
+**Fixed**
+- 🏙️ **Modern City, shopping mall:** two food court tables and their four chairs were placed over the atrium opening and floated in mid-air above the fountain. They now stand on the gallery floor.
+- 🏙️ **Modern City, restaurant:** a terrace lamp floated over the stairwell opening. It now stands under the pergola.
+- 🏙️ **Modern City, city hall:** a lamp replaced half of the bottom step of the staircase, and an upstairs desk and chair replaced part of the stairwell railing, leaving a gap beside the drop. The lamp moved beside the stairs and the desk stops short of the railing.
+- 🪑 **House styles:** in the Spruce Lodge and Desert Sandstone styles every chair was built as a sofa, because those styles use the same stairs for both and the builder told them apart by block name.
+- ⬆️ **Escape to Surface** did nothing when the space above you was water (the bottom of an ocean or lake, or a flooded cave) and reported "could not find open sky". It now brings you up on top of the water. It still never lands you on lava.
+- 🏰 **Find Nearest Structure** showed and ran `/locate structure minecraft:village`. Bedrock's `/locate` takes the structure name without the namespace, so the command is now `/locate structure village` (and the same for every other structure).
+- 🎃 **Pumpkin & Melon Farm:** the confirmation window said the chest is at the right-hand end. It is at the left-hand end, like the sugar cane farm.
+
+Both manifests and all three rebuilt installers are version 1.5.7. Cities built with an earlier version keep their furniture where it was; use Undo Last Build and build again, or move the pieces by hand.
+
+Validation: all 102 mocked Script API regression tests pass. Four new tests and one updated test fail against the 1.5.6 script and pass with these fixes. Minecraft is not available in this environment, so please check a city, a Spruce Lodge house, Escape to Surface from under water and Find Nearest Structure in a disposable world. The `/locate` change follows the Minecraft Wiki's description of the Bedrock command and was not run in game.
+
 ## Version 1.5.6: farm harvesting and collection fixes
 
 - **Kelp:** observers now watch the third growth block instead of the second block occupied by an extended piston head. This removes that direct feedback path. Replaced the overhead dust staircase with a flat, supported bus behind a glass tank, added a third layer of source water, and kept the surface collection stream above it. Permanent water columns between the plants allow harvested spaces to refill. Kelp is planted after the tank and circuit are complete.
