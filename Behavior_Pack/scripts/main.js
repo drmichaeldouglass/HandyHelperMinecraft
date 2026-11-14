@@ -575,7 +575,9 @@ function escapeToSurface(player) {
     for (let y = range.max - 2; y > startY; y--) {
       try {
         const block = dim.getBlock({ x: px, y: y, z: pz });
-        if (block && !block.isAir && !LIQUID_BLOCKS.has(block.typeId)) {
+        // Water counts as a surface, so the rescue also works from the bottom of
+        // an ocean, lake or flooded cave: the player comes up on top of the water.
+        if (block && !block.isAir && !LAVA_BLOCKS.has(block.typeId)) {
           const above1 = dim.getBlock({ x: px, y: y + 1, z: pz });
           const above2 = dim.getBlock({ x: px, y: y + 2, z: pz });
           if (above1 && above1.isAir && above2 && above2.isAir) {
@@ -2039,10 +2041,16 @@ class VillageBuilder {
   furnitureBlock(key, dx, dz) {
     return withBlockStates(FURNITURE_BLOCKS[key], { "minecraft:cardinal_direction": CARDINAL_DIRECTION_NAMES[worldDirectionKey(this.c, dx, dz)] });
   }
-  /** Chair or sofa seat facing local direction (dx, dz): the tall side is behind the seat. */
-  seat(x, y, z, dx, dz, blockId = this.p.chair) {
+  /**
+   * Chair or sofa seat facing local direction (dx, dz): the tall side is behind the seat.
+   * A seat is a sofa only when the caller passes the palette's sofa block; some
+   * styles use the same stairs for both, so the default chair must not be compared.
+   */
+  seat(x, y, z, dx, dz, blockId) {
+    const isSofa = blockId !== undefined && blockId === this.p.sofa;
+    if (blockId === undefined) blockId = this.p.chair;
     if (this.furniture) {
-      this.set(x, y, z, this.furnitureBlock(blockId === this.p.sofa ? "sofa" : "chair", dx, dz));
+      this.set(x, y, z, this.furnitureBlock(isSofa ? "sofa" : "chair", dx, dz));
       return;
     }
     const code = STAIR_DIRECTION_CODES[worldDirectionKey(this.c, -dx, -dz)];
@@ -2739,7 +2747,8 @@ function drawMall(v) {
   v.fill(13, 5, 3, 14, 5, 6, b.air);
   v.fill(12, 6, 3, 12, 6, 5, p.fence);
   v.kitchenRow(5, 15, 6, 0, -1, ["fridge", "furnace", "counter", "smoker", "counter", "furnace", "fridge"]);
-  for (const [x, z] of [[2, 8], [2, 11], [14, 8], [14, 11], [7, 13], [10, 13]]) {
+  // Every table stands on the gallery floor: the atrium opening is x 5 to 11, z 7 to 13.
+  for (const [x, z] of [[2, 8], [2, 11], [14, 8], [14, 11], [2, 14], [14, 14]]) {
     v.table(x, 6, z);
     v.seat(x - 1, 6, z, 1, 0);
     v.seat(x + 1, 6, z, -1, 0);
@@ -2794,11 +2803,13 @@ function drawCityHall(v) {
   v.fill(1, 1, 8, 1, 2, 12, "minecraft:bookshelf");
   v.fill(15, 1, 8, 15, 2, 12, "minecraft:bookshelf");
   v.lamp(2, 1, 6);
-  v.lamp(14, 1, 6);
+  // Beside the staircase, not on its bottom step (x 13 to 14, z 6).
+  v.lamp(15, 1, 6);
   v.fill(3, 1, 14, 5, 1, 14, p.carpet);
   v.fill(11, 1, 14, 13, 1, 14, p.carpet);
   // Upper floor: offices and a library lounge.
-  for (const x of [2, 3, 4, 12]) {
+  // The stairwell railing runs along x = 12, so the last desk stops short of it.
+  for (const x of [2, 3, 4, 11]) {
     v.table(x, 5, 7);
     v.computer(x, 6, 7, 0, 1);
     v.seat(x, 5, 8, 0, -1);
@@ -2868,8 +2879,9 @@ function drawRestaurant(v) {
     v.seat(x + 1, 6, z, -1, 0);
   }
   for (const [x, z] of [[1, 3], [10, 3], [1, 7], [13, 11]]) v.set(x, 6, z, b.leaves);
+  // Both lamps stand on the terrace floor, clear of the stairwell opening (x 12 to 13, z 3 to 6).
   v.lamp(5, 6, 13);
-  v.lamp(13, 6, 3);
+  v.lamp(9, 6, 13);
 }
 
 /** City park with a fountain, paths, trees, flower beds, benches and lamps. */
@@ -4671,7 +4683,7 @@ const CONTRAPTIONS = [
       { type: "slider", key: "units", label: "Number of plants:", min: 2, max: 6, step: 1, defaultValue: 4 }
     ],
     create: (player, v) => createFruitFarmPlan(player, v.units, v.crop),
-    prompt: (plan) => `Build a ${plan.crop.toLowerCase()} farm with ${plan.units} plants here?\n\nThe chest is in the pit at the right-hand end.`,
+    prompt: (plan) => `Build a ${plan.crop.toLowerCase()} farm with ${plan.units} plants here?\n\nThe chest is in the pit at the left-hand end.`,
     success: (plan) => `🎃 ${plan.crop} farm built! Stems take a while to grow; the fruit is harvested into the chest in the pit by itself.`
   },
   {
@@ -5371,7 +5383,8 @@ async function showNearestBiome(player, option) {
  * rights, which the script path does not.
  */
 function showStructureLocateCommand(player, option) {
-  const command = `locate structure ${option.id}`;
+  // Bedrock's /locate takes the structure name without the minecraft: namespace.
+  const command = `locate structure ${String(option.id).replace(/^minecraft:/, "")}`;
   player.setDynamicProperty("last_found_location", `${option.name}: type the numbers from /${command}`);
   player.sendMessage(`§b§l🏰 Where is the nearest ${option.name}?§r`);
   player.sendMessage(`§eSend this in chat: §a/${command}§r`);

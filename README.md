@@ -1,6 +1,6 @@
 # 🪄 Helper Tools: a Minecraft Bedrock Add-On
 
-**Current version: 1.5.6** · Requires Minecraft Bedrock **1.26.40 or newer** · No experiments needed
+**Current version: 1.5.7** · Requires Minecraft Bedrock **1.26.40 or newer** · No experiments needed
 
 Helper Tools gives every player a **Helper Device**, a glowing magic wand. Use it and a colourful menu opens with one-tap helpers: change the time or weather, heal up, escape from a cave, gain superpowers, summon tame pets, teleport to friends or biomes, and build anything from a simple hole to a whole furnished village, a glowing beacon, a sphere or a swimming pool. Builder tools show a glowing 3D preview in the world before anything changes, and the last build can be undone.
 
@@ -31,7 +31,7 @@ The Helper Device menu has eight sections.
 ### 🛡️ Life Savers & Rescue
 - ❤️ **Instant Heal & Feed**: fills your health and hunger bars.
 - 🛡️ **Monster Begone!**: removes hostile mobs (zombies, creepers, skeletons, spiders, phantoms, endermen, witches, slimes and more) within 35 blocks. Animals and pets are left alone.
-- ⬆️ **Escape to Surface**: finds open sky above you and lifts you out of a cave or ravine.
+- ⬆️ **Escape to Surface**: finds open sky above you and lifts you out of a cave or ravine, or up to the top of the water when you are deep in an ocean or lake.
 - 🔥 **Lava & Fire Shield**: puts out fire, nudges you up out of danger and gives 2 minutes of Fire Resistance.
 - 🥛 **Cure All Effects**: clears every potion effect, like drinking milk.
 
@@ -193,7 +193,7 @@ Open **📍 Spawn & Teleport** ➔ **🌎 Find Nearest Biome**, pick a biome, an
 ### Finding structures
 Minecraft doesn't let add-ons read where structures are, so this takes two steps:
 
-1. Open **📍 Spawn & Teleport** ➔ **🏰 Find Nearest Structure** and pick one. The add-on closes the menu and shows the command, for example `/locate structure minecraft:village`, and Minecraft replies in chat with something like `The nearest village is at block 1256, (y?), -648`.
+1. Open **📍 Spawn & Teleport** ➔ **🏰 Find Nearest Structure** and pick one. The add-on closes the menu and shows the command, for example `/locate structure village`, and Minecraft replies in chat with something like `The nearest village is at block 1256, (y?), -648`.
 2. Open **🧭 Teleport to Coordinates** and type the X and Z numbers in. You can also paste the whole "The nearest ..." line into the X box and leave Y and Z empty; the add-on picks the numbers out.
 
 Typing `/locate` yourself needs Cheats on and operator rights.
